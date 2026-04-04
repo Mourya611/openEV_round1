@@ -1,0 +1,33 @@
+name: support-ticket-triage-openenv
+version: 0.1.0
+description: Real-world customer support ticket triage environment for agent training and evaluation.
+authors:
+  - Yarla Mourya Team
+tags:
+  - openenv
+  - customer-support
+  - triage
+  - reinforcement-learning
+entrypoint:
+  type: http
+  base_url_env: ENV_BASE_URL
+  default_base_url: http://localhost:7860
+api:
+  reset: /reset
+  step: /step
+  state: /state
+  tasks: /tasks
+models:
+  observation: envs.models.ObservationModel
+  action: envs.models.TriageAction
+  reward: envs.models.RewardModel
+tasks:
+  - name: ticket-triage-easy
+    difficulty: easy
+    objective: Prioritize and route common billing and security issues correctly.
+  - name: ticket-triage-medium
+    difficulty: medium
+    objective: Handle mixed bug/integration/compliance tickets with accurate routing.
+  - name: ticket-triage-hard
+    difficulty: hard
+    objective: Perform policy-safe triage under high urgency and conflicting constraints.
