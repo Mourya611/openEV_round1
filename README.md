@@ -110,14 +110,15 @@ The required root script `inference.py`:
 Create `.env` from `.env.example`:
 
 ```env
-API_BASE_URL=https://api.groq.com/openai/v1
+API_BASE_URL=http://your-litellm-proxy/v1
 MODEL_NAME=gpt-5-mini
-OPENAI_API_KEY=your_key
+API_KEY=your_proxy_key
+OPENAI_API_KEY=your_local_openai_compatible_key_optional
 HF_TOKEN=your_hf_token
 ENV_BASE_URL=http://localhost:7860
 ```
 
-Note: `MODEL_NAME` is set to `gpt-5-mini` per your requirement.
+Note: for OpenEnv submissions, `inference.py` now prioritizes the injected `API_BASE_URL` and `API_KEY` so requests go through the required LiteLLM proxy. `OPENAI_API_KEY` is only kept as an optional local fallback.
 
 ## Local run
 
@@ -155,7 +156,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\precheck.ps1
 4. Add secrets in Space settings:
    - `API_BASE_URL`
    - `MODEL_NAME`
-   - `OPENAI_API_KEY`
+   - `API_KEY`
    - `HF_TOKEN`
 5. Ensure Space responds on `/health`, `/reset`, `/step`, `/state`.
 

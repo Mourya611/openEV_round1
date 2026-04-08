@@ -14,8 +14,9 @@ except Exception:  # pragma: no cover - dependency may be unavailable in validat
 
 load_dotenv()
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
+API_BASE_URL = os.getenv("API_BASE_URL", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-5-mini")
+API_KEY = os.getenv("API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
 BENCHMARK = "support-ticket-triage-openenv"
@@ -300,9 +301,17 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
 
 async def main() -> None:
     client: Optional["OpenAI"] = None
-    if OPENAI_API_KEY and OpenAI is not None:
+    llm_api_key = API_KEY or OPENAI_API_KEY
+    if API_KEY and API_BASE_URL and OpenAI is not None:
         try:
-            client = OpenAI(base_url=API_BASE_URL, api_key=OPENAI_API_KEY)
+            # Phase 2 validators expect traffic to go through the injected LiteLLM proxy.
+            client = OpenAI(base_url=os.environ["API_BASE_URL"], api_key=os.environ["API_KEY"])
+        except Exception as e:
+            print(f"[WARN] llm_client_init_failed detail={e}", flush=True)
+    elif llm_api_key and API_BASE_URL and OpenAI is not None:
+        try:
+            client = OpenAI(base_url=API_BASE_URL, api_key=llm_api_key)
+            print("[WARN] using_non_submission_llm_env reason=API_KEY_missing", flush=True)
         except Exception as e:
             print(f"[WARN] llm_client_init_failed detail={e}", flush=True)
     else:
