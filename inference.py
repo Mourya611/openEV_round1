@@ -14,8 +14,10 @@ except Exception:  # pragma: no cover - dependency may be unavailable in validat
 
 load_dotenv()
 
-API_BASE_URL = os.getenv("API_BASE_URL", "")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://your-litellm-proxy/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-5-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 API_KEY = os.getenv("API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
