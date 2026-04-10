@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from .graders import grade_episode, score_action
+from .graders import OPEN_INTERVAL_EPSILON, grade_episode, score_action
 from .models import EpisodeState, ObservationModel, StepResult, TriageAction
 from .tasks import TaskDefinition, get_tasks
 
@@ -78,7 +78,7 @@ class SupportTicketTriageEnv:
             observation = self._make_observation(feedback="Episode already complete.")
             return StepResult(
                 observation=observation,
-                reward=0.0,
+                reward=OPEN_INTERVAL_EPSILON,
                 done=True,
                 info={"reason": "episode_done", "final_score": grade_episode(self.current_task, self.state_data.actions_taken)},
             )
@@ -90,7 +90,7 @@ class SupportTicketTriageEnv:
         )
 
         feedback = ""
-        reward_val = 0.0
+        reward_val = OPEN_INTERVAL_EPSILON
 
         if expected_ticket is None:
             self.state_data.done = True
@@ -100,7 +100,7 @@ class SupportTicketTriageEnv:
             feedback = (
                 f"Wrong ticket. Expected {expected_ticket.ticket_id}, got {action.ticket_id}."
             )
-            reward_val = 0.0
+            reward_val = OPEN_INTERVAL_EPSILON
         else:
             components = score_action(self.current_task, action)
             action_quality = components["total"]
@@ -109,7 +109,7 @@ class SupportTicketTriageEnv:
             )
             # Dense reward combines local action quality with global progress.
             reward_val = 0.75 * action_quality + 0.25 * projected_progress
-            reward_val = max(0.0, min(1.0, reward_val))
+            reward_val = max(OPEN_INTERVAL_EPSILON, min(1.0 - OPEN_INTERVAL_EPSILON, reward_val))
 
             self.state_data.actions_taken.append(action)
             self.state_data.rewards.append(reward_val)

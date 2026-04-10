@@ -5,7 +5,7 @@ from typing import Dict, List
 from .models import TriageAction
 from .tasks import TaskDefinition
 
-OPEN_INTERVAL_EPSILON = 1e-6
+OPEN_INTERVAL_EPSILON = 0.01
 
 
 def _clamp_open_unit_interval(value: float) -> float:
@@ -20,7 +20,7 @@ def score_action(task: TaskDefinition, action: TriageAction) -> Dict[str, float]
             "priority_match": 0.0,
             "template_match": 0.0,
             "keyword_coverage": 0.0,
-            "total": 0.0,
+            "total": OPEN_INTERVAL_EPSILON,
         }
 
     decision_match = 1.0 if action.decision == rubric.decision else 0.0
@@ -38,6 +38,7 @@ def score_action(task: TaskDefinition, action: TriageAction) -> Dict[str, float]
         + 0.20 * template_match
         + 0.10 * keyword_coverage
     )
+    total = _clamp_open_unit_interval(total)
     return {
         "decision_match": decision_match,
         "priority_match": priority_match,
