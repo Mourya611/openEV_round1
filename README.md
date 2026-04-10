@@ -9,6 +9,12 @@ pinned: false
 
 # OpenEnv: Support Ticket Triage Environment
 
+## Submission links
+
+- GitHub repository: https://github.com/Mourya611/openEV_round1
+- Hugging Face Space: https://hf.co/spaces/Mourya234/openenv-ticket-triage
+- Hugging Face app URL: https://mourya234-openenv-ticket-triage.hf.space
+
 This project implements a complete real-world OpenEnv-style environment where an agent learns to triage customer support tickets.
 
 ## Why this environment
@@ -98,27 +104,25 @@ Episode final score: normalized deterministic grade in `[0.0, 1.0]`.
 The required root script `inference.py`:
 
 - Uses OpenAI client for all LLM calls
-- Reads credentials/config from env vars
+- Reads the validator-required env vars `API_BASE_URL`, `MODEL_NAME`, and `HF_TOKEN`
 - Emits structured stdout logs:
   - `[START]`
   - `[STEP]`
   - `[END]`
-- Evaluates all tasks and outputs normalized scores
+- Formats rewards to 2 decimal places and emits only validator-compatible line types
 
 ## Environment variables
 
 Create `.env` from `.env.example`:
 
 ```env
-API_BASE_URL=http://your-litellm-proxy/v1
+API_BASE_URL=https://api.openai.com/v1
 MODEL_NAME=gpt-5-mini
-API_KEY=your_proxy_key
-OPENAI_API_KEY=your_local_openai_compatible_key_optional
 HF_TOKEN=your_hf_token
 ENV_BASE_URL=http://localhost:7860
 ```
 
-Note: for OpenEnv submissions, `inference.py` now prioritizes the injected `API_BASE_URL` and `API_KEY` so requests go through the required LiteLLM proxy. `OPENAI_API_KEY` is only kept as an optional local fallback.
+`HF_TOKEN` is required. `API_BASE_URL` and `MODEL_NAME` both include defaults in `inference.py` to satisfy the submission validator.
 
 ## Local run
 
@@ -154,10 +158,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\precheck.ps1
 2. Create a Docker Space on Hugging Face.
 3. Connect the repo.
 4. Add secrets in Space settings:
-   - `API_BASE_URL`
+   - `API_BASE_URL` (optional if you want to override the default)
    - `MODEL_NAME`
-   - `API_KEY`
    - `HF_TOKEN`
+   - `ENV_BASE_URL` (if your Space serves the env on a non-default URL)
 5. Ensure Space responds on `/health`, `/reset`, `/step`, `/state`.
 
 ## Project structure

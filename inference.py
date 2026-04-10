@@ -14,12 +14,10 @@ except Exception:  # pragma: no cover - dependency may be unavailable in validat
 
 load_dotenv()
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://your-litellm-proxy/v1")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-5-mini")
 HF_TOKEN = os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
-API_KEY = os.getenv("API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
 BENCHMARK = "support-ticket-triage-openenv"
 SUCCESS_SCORE_THRESHOLD = 0.70
@@ -40,17 +38,14 @@ def log_step(
     action_str = json.dumps(action, ensure_ascii=True, separators=(",", ":"))
     err = "null" if error is None else json.dumps(error, ensure_ascii=True)
     print(
-        f"[STEP] step={step} action={action_str} reward={reward:.4f} done={str(done).lower()} error={err}",
+        f"[STEP] step={step} action={action_str} reward={reward:.2f} done={str(done).lower()} error={err}",
         flush=True,
     )
 
 
-def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    rewards_str = "[" + ",".join(f"{r:.4f}" for r in rewards) + "]"
-    print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.4f} rewards={rewards_str}",
-        flush=True,
-    )
+def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
 
 
 def _extract_json(text: str) -> Dict[str, Any]:
@@ -230,8 +225,7 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
             )
             result = await _request_json(http=http, method="GET", url=f"{ENV_BASE_URL}/state")
         except Exception as e:
-            log_end(success=False, steps=0, score=0.0, rewards=[])
-            print(f"[ERROR] env_bootstrap_failed task={task_name} detail={e}", flush=True)
+            log_end(success=False, steps=0, rewards=[])
             return 0.0, False
 
         for step in range(1, MAX_STEPS + 1):
@@ -297,61 +291,36 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
         score = sum(rewards) / len(rewards)
     score = max(0.0, min(1.0, score))
     success = score >= SUCCESS_SCORE_THRESHOLD
-    log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+    log_end(success=success, steps=steps_taken, rewards=rewards)
     return score, success
 
 
 async def main() -> None:
-    client: Optional["OpenAI"] = None
-    llm_api_key = API_KEY or OPENAI_API_KEY
-    if API_KEY and API_BASE_URL and OpenAI is not None:
-        try:
-            # Phase 2 validators expect traffic to go through the injected LiteLLM proxy.
-            client = OpenAI(base_url=os.environ["API_BASE_URL"], api_key=os.environ["API_KEY"])
-        except Exception as e:
-            print(f"[WARN] llm_client_init_failed detail={e}", flush=True)
-    elif llm_api_key and API_BASE_URL and OpenAI is not None:
-        try:
-            client = OpenAI(base_url=API_BASE_URL, api_key=llm_api_key)
-            print("[WARN] using_non_submission_llm_env reason=API_KEY_missing", flush=True)
-        except Exception as e:
-            print(f"[WARN] llm_client_init_failed detail={e}", flush=True)
-    else:
-        print("[WARN] using_fallback_policy reason=missing_or_unavailable_llm", flush=True)
+    if HF_TOKEN is None:
+        raise ValueError("HF_TOKEN environment variable is required")
+    if OpenAI is None:
+        raise RuntimeError("openai package is required")
+
+    client: Optional["OpenAI"] = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
     task_names: List[str]
     try:
         async with httpx.AsyncClient(timeout=30.0) as http:
             tasks_data = await _request_json(http=http, method="GET", url=f"{ENV_BASE_URL}/tasks")
             task_names = list(tasks_data.get("tasks", {}).keys())
-    except Exception as e:
-        print(f"[ERROR] list_tasks_failed detail={e}", flush=True)
+    except Exception:
         task_names = []
 
     if len(task_names) < 3:
-        # Known environment tasks fallback to keep execution resilient.
         task_names = [
             "ticket-triage-easy",
             "ticket-triage-medium",
             "ticket-triage-hard",
         ]
-        print("[WARN] fallback_task_list_used", flush=True)
 
-    aggregate: List[float] = []
     for task_name in task_names:
-        score, _ = await run_task(client, task_name)
-        aggregate.append(score)
-
-    mean_score = sum(aggregate) / len(aggregate) if aggregate else 0.0
-    print(
-        f"[END] success={str(mean_score >= SUCCESS_SCORE_THRESHOLD).lower()} steps={len(aggregate)} score={mean_score:.4f} rewards={[round(s, 4) for s in aggregate]}",
-        flush=True,
-    )
+        await run_task(client, task_name)
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        print(f"[FATAL] unhandled_exception detail={e}", flush=True)
-        print("[END] success=false steps=0 score=0.0000 rewards=[]", flush=True)
+    asyncio.run(main())
