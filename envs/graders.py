@@ -5,6 +5,12 @@ from typing import Dict, List
 from .models import TriageAction
 from .tasks import TaskDefinition
 
+OPEN_INTERVAL_EPSILON = 1e-6
+
+
+def _clamp_open_unit_interval(value: float) -> float:
+    return max(OPEN_INTERVAL_EPSILON, min(1.0 - OPEN_INTERVAL_EPSILON, value))
+
 
 def score_action(task: TaskDefinition, action: TriageAction) -> Dict[str, float]:
     rubric = task.rubric_by_ticket.get(action.ticket_id)
@@ -43,7 +49,7 @@ def score_action(task: TaskDefinition, action: TriageAction) -> Dict[str, float]
 
 def grade_episode(task: TaskDefinition, actions: List[TriageAction]) -> float:
     if not actions:
-        return 0.0
+        return OPEN_INTERVAL_EPSILON
 
     ticket_scores = []
     seen = set()
@@ -55,4 +61,4 @@ def grade_episode(task: TaskDefinition, actions: List[TriageAction]) -> float:
         ticket_scores.append(score_action(task, action)["total"])
 
     normalized = sum(ticket_scores) / len(task.tickets)
-    return max(0.0, min(1.0, normalized))
+    return _clamp_open_unit_interval(normalized)
