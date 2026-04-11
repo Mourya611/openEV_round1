@@ -49,10 +49,14 @@ def log_step(
     )
 
 
-def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    score = _clamp_open_unit_interval(score)
     bounded_rewards = [_clamp_open_unit_interval(reward) for reward in rewards]
     rewards_str = ",".join(f"{r:.2f}" for r in bounded_rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
+    print(
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        flush=True,
+    )
 
 
 def _extract_json(text: str) -> Dict[str, Any]:
@@ -232,7 +236,7 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
             )
             result = await _request_json(http=http, method="GET", url=f"{ENV_BASE_URL}/state")
         except Exception as e:
-            log_end(success=False, steps=0, rewards=[])
+            log_end(success=False, steps=0, score=LOG_SCORE_EPSILON, rewards=[])
             return LOG_SCORE_EPSILON, False
 
         for step in range(1, MAX_STEPS + 1):
@@ -298,11 +302,21 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
                 )
                 break
 
-    if rewards:
+    final_score = None
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http:
+            grade_data = await _request_json(http=http, method="GET", url=f"{ENV_BASE_URL}/grade")
+            final_score = grade_data.get("score")
+    except Exception:
+        final_score = None
+
+    if final_score is not None:
+        score = float(final_score)
+    elif rewards:
         score = sum(rewards) / len(rewards)
     score = _clamp_open_unit_interval(score)
     success = score >= SUCCESS_SCORE_THRESHOLD
-    log_end(success=success, steps=steps_taken, rewards=rewards)
+    log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
     return score, success
 
 
