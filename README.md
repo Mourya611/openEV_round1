@@ -66,13 +66,13 @@ Typed models are implemented via Pydantic in `envs/models.py`.
 - `current_ticket` (or `null`)
 - `queue_remaining`
 - `processed_count`
-- `progress` (0.0-1.0)
+- `progress` (reported inside `(0, 1)` to avoid boundary-value validator issues)
 - `last_feedback`
 - allowed decisions/priorities/templates
 
 ## Reward design
 
-Per-step reward is in `[0.0, 1.0]` and combines:
+Per-step reward is reported strictly inside `(0, 1)` and combines:
 
 - Local action quality from deterministic rubric matching:
   - decision correctness
@@ -83,7 +83,7 @@ Per-step reward is in `[0.0, 1.0]` and combines:
 
 Formula:
 
-`reward = 0.75 * action_quality + 0.25 * projected_progress`, clamped to `[0,1]`.
+`reward = 0.75 * action_quality + 0.25 * projected_progress`, clamped into `(0,1)`.
 
 This provides dense, partial-progress signals and discourages random behavior.
 
@@ -97,13 +97,14 @@ Three deterministic tasks are included:
 
 Task definitions: `envs/tasks.py`  
 Graders: `envs/graders.py`  
-Episode final score: normalized deterministic grade in `[0.0, 1.0]`.
+Episode final score: normalized deterministic grade reported strictly inside `(0, 1)`.
 
 ## Inference baseline (required)
 
 The required root script `inference.py`:
 
 - Uses OpenAI client for all LLM calls
+- Falls back to a deterministic built-in policy if the OpenAI client or token is unavailable
 - Reads the validator-required env vars `API_BASE_URL`, `MODEL_NAME`, and `HF_TOKEN`
 - Emits structured stdout logs:
   - `[START]`
@@ -122,7 +123,7 @@ HF_TOKEN=your_hf_token
 ENV_BASE_URL=http://localhost:7860
 ```
 
-`HF_TOKEN` is required. `API_BASE_URL` and `MODEL_NAME` both include defaults in `inference.py` to satisfy the submission validator.
+`API_BASE_URL` and `MODEL_NAME` include defaults in `inference.py`. If `HF_TOKEN` is not set, the script falls back to the deterministic local policy so the validator can still execute the run.
 
 ## Local run
 

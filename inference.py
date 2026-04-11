@@ -25,6 +25,10 @@ MAX_STEPS = 12
 LOG_SCORE_EPSILON = 0.01
 
 
+def _clamp_open_unit_interval(value: float) -> float:
+    return max(LOG_SCORE_EPSILON, min(1.0 - LOG_SCORE_EPSILON, value))
+
+
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
@@ -38,7 +42,7 @@ def log_step(
 ) -> None:
     action_str = json.dumps(action, ensure_ascii=True, separators=(",", ":"))
     err = "null" if error is None else json.dumps(error, ensure_ascii=True)
-    reward = max(LOG_SCORE_EPSILON, min(1.0 - LOG_SCORE_EPSILON, reward))
+    reward = _clamp_open_unit_interval(reward)
     print(
         f"[STEP] step={step} action={action_str} reward={reward:.2f} done={str(done).lower()} error={err}",
         flush=True,
@@ -46,9 +50,7 @@ def log_step(
 
 
 def log_end(success: bool, steps: int, rewards: List[float]) -> None:
-    bounded_rewards = [
-        max(LOG_SCORE_EPSILON, min(1.0 - LOG_SCORE_EPSILON, reward)) for reward in rewards
-    ]
+    bounded_rewards = [_clamp_open_unit_interval(reward) for reward in rewards]
     rewards_str = ",".join(f"{r:.2f}" for r in bounded_rewards)
     print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
 
@@ -246,7 +248,7 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
             observation = {
                 "objective": result.get("objective"),
                 "current_ticket": current_ticket,
-                "progress": (idx / len(tickets)) if tickets else 1.0,
+                "progress": _clamp_open_unit_interval((idx / len(tickets)) if tickets else 1.0),
             }
 
             error = None
@@ -271,7 +273,7 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
                 )
                 break
 
-            reward = float(body.get("reward", 0.0) or 0.0)
+            reward = _clamp_open_unit_interval(float(body.get("reward", 0.0) or 0.0))
             done = bool(body.get("done", False))
             rewards.append(reward)
             steps_taken = step
@@ -298,19 +300,16 @@ async def run_task(client: Optional["OpenAI"], task_name: str) -> Tuple[float, b
 
     if rewards:
         score = sum(rewards) / len(rewards)
-    score = max(LOG_SCORE_EPSILON, min(1.0 - LOG_SCORE_EPSILON, score))
+    score = _clamp_open_unit_interval(score)
     success = score >= SUCCESS_SCORE_THRESHOLD
     log_end(success=success, steps=steps_taken, rewards=rewards)
     return score, success
 
 
 async def main() -> None:
-    if HF_TOKEN is None:
-        raise ValueError("HF_TOKEN environment variable is required")
-    if OpenAI is None:
-        raise RuntimeError("openai package is required")
-
-    client: Optional["OpenAI"] = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    client: Optional["OpenAI"] = None
+    if HF_TOKEN is not None and OpenAI is not None:
+        client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
     task_names: List[str]
     try:

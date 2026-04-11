@@ -22,7 +22,7 @@ class TriageAction(BaseModel):
 
 
 class RewardModel(BaseModel):
-    value: float = Field(..., ge=0.0, le=1.0)
+    value: float = Field(..., gt=0.0, lt=1.0)
     rationale: str
     components: Dict[str, float] = Field(default_factory=dict)
 
@@ -33,7 +33,7 @@ class ObservationModel(BaseModel):
     current_ticket: Optional[Ticket] = None
     queue_remaining: int = 0
     processed_count: int = 0
-    progress: float = Field(..., ge=0.0, le=1.0)
+    progress: float = Field(..., gt=0.0, lt=1.0)
     last_feedback: str = ""
     allowed_decisions: List[str] = Field(
         default_factory=lambda: ["resolve", "escalate", "request_info", "defer"]
@@ -48,7 +48,7 @@ class ObservationModel(BaseModel):
 
 class StepResult(BaseModel):
     observation: ObservationModel
-    reward: float = Field(..., ge=0.0, le=1.0)
+    reward: float = Field(..., gt=0.0, lt=1.0)
     done: bool
     info: Dict[str, object] = Field(default_factory=dict)
 
@@ -64,7 +64,7 @@ class EpisodeState(BaseModel):
     step_count: int
     current_index: int
     done: bool
-    total_reward: float
+    total_reward: float = Field(..., gt=0.0)
     tickets: List[Ticket]
     actions_taken: List[TriageAction]
-    rewards: List[float]
+    rewards: List[float] = Field(default_factory=list)

@@ -2,7 +2,7 @@ fastapi==0.115.12
 uvicorn[standard]==0.34.1
 pydantic==2.11.3
 python-dotenv==1.1.0
-openai>=2.7.2
+openai==2.30.0
 httpx==0.28.1
 PyYAML==6.0.2
-openenv-core>=0.2.0
+openenv-core==0.2.1

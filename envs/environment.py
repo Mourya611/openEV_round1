@@ -32,6 +32,7 @@ class SupportTicketTriageEnv:
             if self.state_data.tickets
             else 1.0
         )
+        progress = max(OPEN_INTERVAL_EPSILON, min(1.0 - OPEN_INTERVAL_EPSILON, progress))
 
         return ObservationModel(
             task_name=self.current_task.name,
@@ -58,13 +59,18 @@ class SupportTicketTriageEnv:
             step_count=0,
             current_index=0,
             done=False,
-            total_reward=0.0,
+            total_reward=OPEN_INTERVAL_EPSILON,
             tickets=self.current_task.tickets,
             actions_taken=[],
             rewards=[],
         )
         observation = self._make_observation(feedback="Episode reset.")
-        return StepResult(observation=observation, reward=0.0, done=False, info={"task": self.current_task.name})
+        return StepResult(
+            observation=observation,
+            reward=OPEN_INTERVAL_EPSILON,
+            done=False,
+            info={"task": self.current_task.name},
+        )
 
     def state(self) -> Dict[str, object]:
         assert self.state_data is not None
