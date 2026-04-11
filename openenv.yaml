@@ -25,9 +25,21 @@ tasks:
   - name: ticket-triage-easy
     difficulty: easy
     objective: Prioritize and route common billing and security issues correctly.
+    max_steps: 4
   - name: ticket-triage-medium
     difficulty: medium
     objective: Handle mixed bug/integration/compliance tickets with accurate routing.
+    max_steps: 6
   - name: ticket-triage-hard
     difficulty: hard
     objective: Perform policy-safe triage under high urgency and conflicting constraints.
+    max_steps: 8
+reward_range:
+  low: 0
+  high: 1
+endpoints:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+  tasks: GET /tasks
+  grade: GET /grade

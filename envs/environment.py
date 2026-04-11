@@ -76,6 +76,32 @@ class SupportTicketTriageEnv:
         assert self.state_data is not None
         return self.state_data.model_dump()
 
+    def grade(self, task_name: Optional[str] = None) -> Dict[str, object]:
+        if task_name is not None and task_name in self.tasks and (
+            self.current_task is None or self.current_task.name != task_name
+        ):
+            self.current_task = self.tasks[task_name]
+            self.state_data = None
+
+        if self.current_task is None:
+            self.current_task = self.tasks["ticket-triage-easy"]
+
+        if self.state_data is None:
+            score = OPEN_INTERVAL_EPSILON
+            breakdown = {}
+        else:
+            score = grade_episode(self.current_task, self.state_data.actions_taken)
+            breakdown = {
+                action.ticket_id: score_action(self.current_task, action)
+                for action in self.state_data.actions_taken
+            }
+
+        return {
+            "task": self.current_task.name,
+            "score": round(score, 6),
+            "breakdown": breakdown,
+        }
+
     def step(self, action: TriageAction) -> StepResult:
         assert self.current_task is not None
         assert self.state_data is not None
@@ -116,6 +142,7 @@ class SupportTicketTriageEnv:
             # Dense reward combines local action quality with global progress.
             reward_val = 0.75 * action_quality + 0.25 * projected_progress
             reward_val = max(OPEN_INTERVAL_EPSILON, min(1.0 - OPEN_INTERVAL_EPSILON, reward_val))
+            reward_val = round(reward_val, 6)
 
             self.state_data.actions_taken.append(action)
             self.state_data.rewards.append(reward_val)

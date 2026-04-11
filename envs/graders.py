@@ -9,7 +9,8 @@ OPEN_INTERVAL_EPSILON = 0.01
 
 
 def _clamp_open_unit_interval(value: float) -> float:
-    return max(OPEN_INTERVAL_EPSILON, min(1.0 - OPEN_INTERVAL_EPSILON, value))
+    bounded = max(OPEN_INTERVAL_EPSILON, min(1.0 - OPEN_INTERVAL_EPSILON, value))
+    return round(bounded, 6)
 
 
 def score_action(task: TaskDefinition, action: TriageAction) -> Dict[str, float]:

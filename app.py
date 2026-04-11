@@ -42,3 +42,10 @@ def step(action: TriageAction) -> dict:
 @app.get("/state")
 def state() -> dict:
     return env.state()
+
+
+@app.get("/grade")
+def grade(task_name: str | None = None) -> dict:
+    if task_name is not None and task_name not in env.tasks:
+        raise HTTPException(status_code=400, detail=f"Unknown task_name: {task_name}")
+    return env.grade(task_name=task_name)
