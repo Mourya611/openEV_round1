@@ -38,12 +38,14 @@ The environment exposes:
 - `POST /step` -> applies one agent action
 - `GET /state` -> returns full internal state
 - `GET /tasks` -> lists task metadata
+- `GET /grade` -> returns the current task score and grader breakdown
 
 The environment core class is `SupportTicketTriageEnv` in `envs/environment.py`, with:
 
 - `reset(task_name: Optional[str])`
 - `step(action: TriageAction)`
 - `state()`
+- `grade(task_name: Optional[str])`
 
 Typed models are implemented via Pydantic in `envs/models.py`.
 
@@ -110,7 +112,8 @@ The required root script `inference.py`:
   - `[START]`
   - `[STEP]`
   - `[END]`
-- Formats rewards to 2 decimal places and emits only validator-compatible line types
+- Uses validator-compatible `[END] success=... steps=... score=... rewards=...` output
+- Formats scores and rewards to 2 decimal places and emits only validator-compatible line types
 
 ## Environment variables
 
@@ -163,7 +166,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\precheck.ps1
    - `MODEL_NAME`
    - `HF_TOKEN`
    - `ENV_BASE_URL` (if your Space serves the env on a non-default URL)
-5. Ensure Space responds on `/health`, `/reset`, `/step`, `/state`.
+5. Ensure Space responds on `/health`, `/reset`, `/step`, `/state`, `/tasks`, and `/grade`.
 
 ## Project structure
 
